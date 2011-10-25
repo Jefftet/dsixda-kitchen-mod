@@ -1,0 +1,40 @@
+############################################################################
+#
+# Copyright (c) 2010-2011
+#
+# Android Kitchen is 100% free.  This script file is intended for personal
+# and/or educational use only.  It may not be duplicated for monetary
+# benefit or any other purpose without the permission of the developer.
+#
+############################################################################
+
+clear
+
+framework_files_dir=tools/framework_files
+
+if [ ! -e $framework_files_dir ]
+then
+
+  mkdir $framework_files_dir
+
+fi
+
+echo
+echo "---> Place framework-res.apk into `pwd`/$framework_files_dir"
+
+scripts/press_enter
+
+echo "Installing framework-res ..."
+echo
+if [ ! -e $framework_files_dir/framework-res.apk ]
+then
+
+  echo "ERROR: framework-res.apk not found"
+  
+  exit 0
+else
+  
+  apktool if $framework_files_dir/framework-res.apk
+
+fi
+

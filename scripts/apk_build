@@ -1,0 +1,89 @@
+############################################################################
+#
+# Copyright (c) 2010-2011
+#
+# Android Kitchen is 100% free.  This script file is intended for personal
+# and/or educational use only.  It may not be duplicated for monetary
+# benefit or any other purpose without the permission of the developer.
+#
+############################################################################
+
+apk_dir=apk
+
+if [ ! -e $apk_dir ]
+then
+
+  mkdir $apk_dir
+
+fi
+
+cd apk
+apk_dirs=`find . | grep "\.apk\$" | sed -e 's/.\///'`
+cd ..
+
+clear
+
+if [ "$apk_dirs" == "" ]
+then
+  echo "ERROR: No *.apk(s) to build"
+  exit
+fi
+
+while :
+do
+  clear
+  count=0
+  echo
+  echo "Build APK"
+  echo "---------"
+  echo
+  echo "Enter a choice:"
+  echo
+  
+  for d in $apk_dirs
+  do
+    if [ -e apk/${d/.apk} ]
+    then
+      count=$(($count+1))
+      apk_array[$count]=${d/.apk}
+      echo "  $count = ${d/.apk}"
+    fi
+  done
+
+  echo "  a = All"
+  echo "  x = Exit"
+  echo
+  echo
+  echo -n "?: "
+  read opt
+
+  if [ "$opt" == "x" ]; then
+    exit 0
+  fi
+
+  if [ "$opt" == "a" ]; then
+
+    for f in $apk_dirs
+    do
+
+      clear
+      echo
+      echo "Building apk/${f/.apk} ..."
+      echo
+      apktool b -f apk/${f/.apk}
+
+    done
+
+  elif [ "`echo $opt | sed 's/[0-9]*//'`" == "" ]
+  then
+
+    clear
+    echo
+    echo "Building apk/${apk_array[$opt]/.apk} ..."
+    echo
+    apktool b -f apk/${apk_array[$opt]/.apk}
+
+  fi
+  exit 0
+done
+

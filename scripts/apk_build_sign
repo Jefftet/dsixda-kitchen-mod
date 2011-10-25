@@ -1,0 +1,107 @@
+############################################################################
+#
+# Copyright (c) 2010-2011
+#
+# Android Kitchen is 100% free.  This script file is intended for personal
+# and/or educational use only.  It may not be duplicated for monetary
+# benefit or any other purpose without the permission of the developer.
+#
+############################################################################
+
+apk_dir=apk
+
+if [ ! -e $apk_dir ]
+then
+
+  mkdir $apk_dir
+
+fi
+
+util_dir=tools/signapk_files
+
+cd apk
+apk_dirs=`find . | grep "\.apk\$" | sed -e 's/.\///'`
+cd ..
+
+clear
+
+if [ "$apk_dirs" == "" ]
+then
+  echo "ERROR: No *.apk(s) found"
+  exit 0
+fi
+
+while :
+do
+  clear
+  count=0
+  echo
+  echo "Build & Sign APK"
+  echo "----------------"
+  echo
+  echo "Enter a choice:"
+  echo
+  
+  for d in $apk_dirs
+  do
+    if [ -e apk/${d/.apk} ]
+    then
+      count=$(($count+1))
+      apk_array[$count]=${d/.apk}
+      echo "  $count = ${d/.apk}"
+    fi
+  done
+
+  echo "  a = All"
+  echo "  x = Exit"
+  echo
+  echo
+  echo -n "?: "
+  read opt
+
+  if [ "$opt" == "x" ]
+  then
+    exit 0
+  fi
+
+  if [ "$opt" == "a" ]
+  then
+
+    clear
+    for f in $apk_dirs
+    do
+
+      echo
+      echo "Building, apk/${f/.apk} ..."
+      echo
+      apktool b -f apk/${f/.apk}
+      echo
+      echo "Signing apk/${apk_array[$opt]/.apk}/dist/${apk_array[$opt]}.apk ..."
+      java -jar $util_dir/signapk.jar $util_dir/testkey.x509.pem $util_dir/testkey.pk8 apk/${apk_array[$opt]/.apk}/dist/${apk_array[$opt]}.apk apk/${apk_array[$opt]/.apk}/dist/signed.apk
+      if [ ! -e apk/${apk_array[$opt]/.apk}/signed ]
+      then
+        mkdir apk/${apk_array[$opt]/.apk}/signed
+      fi
+      mv -f apk/${apk_array[$opt]/.apk}/dist/signed.apk apk/${apk_array[$opt]/.apk}/signed/${apk_array[$opt]}.apk      
+    done
+
+  elif [ "`echo $opt | sed 's/[0-9]*//'`" == "" ]
+  then
+
+    clear
+    echo
+    echo "Building apk/${apk_array[$opt]/.apk} ..."
+    echo
+    apktool b -f apk/${apk_array[$opt]/.apk}
+    echo
+    echo "Signing apk/${apk_array[$opt]/.apk}/dist/${apk_array[$opt]}.apk ..."
+    java -jar $util_dir/signapk.jar $util_dir/testkey.x509.pem $util_dir/testkey.pk8 apk/${apk_array[$opt]/.apk}/dist/${apk_array[$opt]}.apk apk/${apk_array[$opt]/.apk}/dist/signed.apk
+    if [ ! -e apk/${apk_array[$opt]/.apk}/signed ]
+    then
+      mkdir apk/${apk_array[$opt]/.apk}/signed
+    fi
+    mv -f apk/${apk_array[$opt]/.apk}/dist/signed.apk apk/${apk_array[$opt]/.apk}/signed/${apk_array[$opt]}.apk
+  fi
+  exit 0
+done
+

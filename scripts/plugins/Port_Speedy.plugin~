@@ -1,0 +1,168 @@
+
+echo
+echo "Port Latest MIUI to Speedy"
+echo "--------------------------------------"
+echo
+echo "This script will copy files needed for"
+echo "device speedy. It will also remove"
+echo "un-needed files from Desire Z Rom."
+echo
+
+echo -n "Proceed (y/n)? (default: y): "
+read proceed
+echo
+
+if [ "$proceed" == "n" ]
+then
+  exit 0
+else
+
+  source=dev/miui-speedy/overlay
+
+  clear
+  scripts/make_backup_working
+
+  result=$?
+
+  if [ "$result" == "1" ]
+  then
+
+    echo
+    echo "Error: Old working folder is in use. Ensure its files or folders are not open."
+    scripts/press_enter
+    exit 1
+
+  else
+
+    grep_cmd=`scripts/grep_roms`
+
+    if [ "$grep_cmd" == "" ]
+    then
+      echo "Error: No ROMs found under original_update folder!"
+      exit 0
+    fi
+
+    count=0
+    rm -f temp.list
+
+    echo >> temp.list
+    echo "Available ROMs:" >> temp.list
+    echo >> temp.list
+
+    for filename in $grep_cmd 
+    do
+      count=$(($count+1))
+
+      filename=`echo $filename | sed 's/temp_space/ /g'`
+
+      # Store file names in an array
+      file_array[$count]=$filename
+
+      if [ "$filename" == "system.img" ]
+      then
+        filename="system.img and boot.img"
+
+      elif [ "$filename" == "factoryfs.rfs" ]
+      then
+        filename="factoryfs.rfs, cache.rfs and zImage"
+
+      elif [ "$filename" == "factoryfs.img" ]
+      then
+        filename="factoryfs.img, cache.img and zImage"
+
+      elif [ "$filename" == "PDA.tar.md5" ]
+      then
+        filename="PDA.tar.md5, CSC.tar.md5 and PHONE.tar.md5"
+
+      elif [ "$filename" == "PDA.tar" ]
+      then
+        filename="PDA.tar, CSC.tar and PHONE.tar"
+      fi
+
+      echo "  ($count) $filename" >> temp.list
+    done
+
+    more temp.list
+    rm -f temp.list
+
+    echo
+    echo -n "Enter selection number (default=1, cancel=0): "
+
+    read enterNumber
+    echo
+
+    if [ "$enterNumber" == "0" ]
+    then
+      exit 0
+    fi
+
+    if [ "$enterNumber" == "" ]
+    then
+      enterNumber=1
+    fi
+
+    if [ "`echo $enterNumber | sed 's/[0-9]*//'`" == "" ] || [ "enterNumber"=="1" ]
+    then
+      file_chosen=${file_array[$enterNumber]}
+
+      if [ "$file_chosen" == "" ]
+      then
+        exit 0
+      fi
+    else
+      exit 0
+    fi
+
+    clear
+
+    date_str=`date '+%m%d%y_%H%M%S'`
+    build_dir=WORKING_$date_str
+
+    echo
+    echo "Creating working folder $build_dir ..."
+    mkdir $build_dir
+
+    echo
+    echo "Extracting ROM ..."
+    unzip -q original_update/$file_chosen -d $build_dir -x bootloader.img recovery.img recovery_signed.img userdata.img radio.img rcdata.img splash1.nb0 splash2.nb0 android-info.txt 2>/dev/null
+
+    working=`ls | grep -m 1 WORKING_` 
+
+    if [ "$working" != "" ]
+    then
+      echo
+      echo "Prepairing ROM ..."
+      rm -f -r ./$working/META-INF
+      rm -f ./$working/boot.img
+      rm -f ./$working/system/app/Torch.apk
+      
+      rm -f ./$working/system/etc/A1026_CFG.csv
+      rm -f ./$working/system/etc/AdieHWCodec_WA.csv
+      rm -f ./$working/system/etc/T-Mobile*
+      rm -f ./$working/system/etc/firmware/Vision*
+      rm -f ./$working/system/etc/firmware/default_org_WA.acdb
+      rm -f ./$working/system/etc/permissions/android.hardware.telephony.gsm.xml
+
+      rm -f ./$working/system/lib/hw/*.vision.so
+      rm -f ./$working/system/lib/modules/*
+
+      rm -f ./$working/system/usr/keychars/vision*
+      rm -f ./$working/system/usr/keylayout/vision*
+      cp ./$working/system/build.prop ./$working/system/build.orig
+      rm -f ./$working/system/build.prop
+
+      echo
+      echo "Porting ROM ..."
+      cp -f -r ~/$source/* ./$working
+
+      echo
+      echo "Complete."
+      echo 
+      echo "Note: Mms.apk & framework.jar MODS are still needed."
+      echo
+    fi
+  fi
+fi
+
+exit 0
+

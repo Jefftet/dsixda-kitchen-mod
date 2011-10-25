@@ -1,0 +1,98 @@
+############################################################################
+#
+# Copyright (c) 2010-2011
+#
+# Android Kitchen is 100% free.  This script file is intended for personal
+# and/or educational use only.  It may not be duplicated for monetary
+# benefit or any other purpose without the permission of the developer.
+#
+############################################################################
+
+clear
+
+apk_dir=apk
+
+if [ ! -e $apk_dir ]
+then
+
+  mkdir $apk_dir
+
+fi
+
+echo
+echo "---> Place *.apk(s) into `pwd`/$apk_dir <---"
+
+scripts/press_enter
+
+cd $apk_dir
+apk_files=`find . | grep "\.apk\$" | sed -e 's/.\///'`
+cd ..
+
+if [ "$apk_files" == "" ]
+then
+
+  clear
+  echo "ERROR: *.apks not found"
+  exit 0
+
+fi
+
+while :
+do
+
+  clear
+  count=0
+  echo
+  echo "Decode APK"
+  echo "----------------"
+  echo
+  echo "Enter a choice:"
+  echo
+
+  for apk in $apk_files
+  do
+
+    count=$(($count+1))
+    apk_array[$count]=$apk
+    echo "  $count = $apk"
+
+  done
+
+  echo "  a = All"
+  echo "  x = Exit"
+  echo
+  echo
+  echo -n "?: "
+  read opt
+
+  if [ "$opt" == "x" ]
+  then
+    exit 0
+  fi
+
+  if [ "$opt" == "a" ]; then
+
+    for f in $apk_files
+    do
+
+      clear
+      echo
+      echo "Decompiling, APK/$f -> APK/${f/.apk} ..."
+      echo
+      apktool d -f apk/$f apk/${f/.apk}
+
+    done
+
+  elif [ "`echo $opt | sed 's/[0-9]*//'`" == "" ]
+  then
+
+    clear
+    echo
+    echo "Decompiling, APK/${apk_array[$opt]} -> APK/${apk_array[$opt]/.apk} ..."
+    echo
+    apktool d -f apk/${apk_array[$opt]} apk/${apk_array[$opt]/.apk}
+
+  fi
+  exit 0
+done
+

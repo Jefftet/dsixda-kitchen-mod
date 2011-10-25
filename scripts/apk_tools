@@ -1,0 +1,52 @@
+############################################################################
+#
+# Copyright (c) 2010-2011
+#
+# Android Kitchen is 100% free.  This script file is intended for personal
+# and/or educational use only.  It may not be duplicated for monetary
+# benefit or any other purpose without the permission of the developer.
+#
+############################################################################
+
+clear
+
+while :
+do
+
+  clear
+
+  echo
+  echo "APK tools"
+  echo "----------------"
+  echo
+  echo "Enter a choice:"
+  echo 
+  echo "  i = Install framework (apktool if)"
+  echo "  d = Decode *.apk (apktool d)"
+  echo "  b = Build *.apk (apktool b)"
+  echo "  m = Build & Sign *.apk"
+  echo "  s = Sign *.apk"
+  echo
+  echo "  x = Exit APK tools"
+  echo
+  echo 
+  echo -n "?: "
+  read opt
+  
+  if [ "$?" != "1" ]
+  then
+    case $opt in
+      i) scripts/apk_if;;
+      d) scripts/apk_decode;;
+      b) scripts/apk_build;;
+      m) scripts/apk_build_sign;;
+      s) scripts/apk_sign;;
+      x) exit 0;;
+      *) echo "Invalid option"; continue;;
+    esac
+  fi
+
+  scripts/press_enter
+
+done
+
