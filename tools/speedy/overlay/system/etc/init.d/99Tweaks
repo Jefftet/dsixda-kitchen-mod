@@ -1,0 +1,15 @@
+#!/system/bin/sh
+
+MMC=`ls -d /sys/block/mmc*`
+
+for n in $MMC; do
+	if [ -e $n/queue/rotational ]; then
+		echo 0 > $n/queue/rotational
+	fi
+	if [ -e $n/queue/read_ahead_kb ]; then
+		echo 512 > $n/queue/read_ahead_kb
+	fi
+done
+
+echo 256 > /sys/devices/virtual/bdi/default/read_ahead_kb
+

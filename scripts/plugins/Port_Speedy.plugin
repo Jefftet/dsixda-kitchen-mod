@@ -4,9 +4,9 @@ echo " Port MIUI to Speedy"
 echo "-------------------------------------------------------------------------"
 echo
 echo -n "--> Proceed with Port (y/n)? (default: y): "
-read proceed
+read PROCEED
 
-if [ "$proceed" == "n" ]
+if [ "$PROCEED" == "n" ]
 then
   exit 0
 else
@@ -15,6 +15,7 @@ else
   OVERLAY=tools/speedy/overlay/*
   MMS_MODS=tools/speedy/mms/*
   FRAME_MODS=tools/speedy/framework/*
+  RAMDISK_MODS=tools/speedy/ramdisk/init.rc
 
   echo -n "--> Enter MIUI build version: "
   read VERSION
@@ -36,18 +37,20 @@ else
 
   clear
   echo "-------------------------------------------------------------------------"
-  echo " Porting MIUI_${VERSION} to device Speedy"
+  echo " Porting MIUI ${VERSION} to device Speedy"
   echo "-------------------------------------------------------------------------"
   echo
   echo "--> Creating working folder  ..."
   mkdir $BUILD_DIR
 
-  echo "--> Downloading base rom ..."
+  echo "--> Locating base rom ..."
   if [ -e original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip ]
   then
-    rm -f original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip
+    echo "--> Base rom found locally."
+  else
+    echo "--> Downloading base rom ..."
+    wget -O original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip "http://romsmaster.miui.us/${VERSION}/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip"
   fi
-  wget -O original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip "http://romsmaster.miui.us/${VERSION}/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip"
 
   echo "--> Extracting rom ..."
   unzip -q original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip -d $BUILD_DIR -x bootloader.img recovery.img recovery_signed.img userdata.img radio.img rcdata.img splash1.nb0 splash2.nb0 android-info.txt 2>/dev/null
@@ -62,10 +65,13 @@ else
   rm -f $BUILD_DIR/system/etc/firmware/Vision*
   rm -f $BUILD_DIR/system/etc/firmware/default_org_WA.acdb
   rm -f $BUILD_DIR/system/etc/permissions/android.hardware.telephony.gsm.xml
+  rm -f $BUILD_DIR/system/etc/permissions/google.android.maps.xml
+  rm -f $BUILD_DIR/system/framework/com.google.android.maps.jar
   rm -f $BUILD_DIR/system/lib/hw/*.vision.so
   rm -f $BUILD_DIR/system/lib/modules/*
   rm -f $BUILD_DIR/system/usr/keychars/vision*
   rm -f $BUILD_DIR/system/usr/keylayout/vision*
+  rm -fr $BUILD_DIR/system/usr/vendor
   cp $BUILD_DIR/system/build.prop $BUILD_DIR/system/build.orig
   rm -f $BUILD_DIR/system/build.prop
 
@@ -75,14 +81,19 @@ else
 
   clear
   echo "-------------------------------------------------------------------------"
-  echo " Porting MIUI_${VERSION} to device Speedy"
+  echo " Porting MIUI ${VERSION} to device Speedy"
   echo "-------------------------------------------------------------------------"
   echo
-  echo "--> Making Modifications ..."
+  echo "--> Updating to latest framework-res ..."
   apktool if $BUILD_DIR/system/framework/framework-res.apk
 
+  echo "--> Modifying Mms.apk ..."
+  echo "--> Decompiling Mms.apk..."
   apktool d -f $BUILD_DIR/system/app/Mms.apk apk/Mms
+  echo "--> Applying patch ..."
   cp -rf $MMS_MODS apk/Mms
+  sleep 1
+  echo "--> Building Mms.apk ..."
   apktool b apk/Mms
   cd apk/Mms/build/apk
   zip -q -u $WORKING/system/app/Mms.apk res/xml/mms_config.xml
@@ -90,12 +101,16 @@ else
 
   clear
   echo "-------------------------------------------------------------------------"
-  echo " Porting MIUI_${VERSION} to device Speedy"
+  echo " Porting MIUI ${VERSION} to device Speedy"
   echo "-------------------------------------------------------------------------"
   echo
-  echo "--> Making Modifications ..."
+  echo "--> Modifying framework.jar ..."
+  echo "--> Decompiling framework.jar ..."
   apktool d -f $BUILD_DIR/system/framework/framework.jar apk/framework.jar.out
+  echo "--> Applying patch ..."
   cp -rf $FRAME_MODS apk/framework.jar.out
+  sleep 1
+  echo "--> Building framework.jar ..."
   apktool b apk/framework.jar.out
   cd apk/framework.jar.out/build/apk
   zip -q -j -u $WORKING/system/framework/framework.jar classes.dex
@@ -105,35 +120,76 @@ else
 
   clear
   echo "-------------------------------------------------------------------------"
-  echo " Porting MIUI_${VERSION} to device Speedy"
+  echo " Porting MIUI ${VERSION} to device Speedy"
+  echo "-------------------------------------------------------------------------"
+  echo
+  echo "--> Modifying boot.img ..."
+  if [ -d BOOTIMG_${VERSION} ]; then
+    rm -fr BOOTIMG_${VERSION}
+  fi
+  mkdir BOOTIMG_${VERSION}
+  cp tools/extract_boot_files/extract-ramdisk.pl BOOTIMG_${VERSION}/extract-ramdisk.pl
+  cp tools/extract_boot_files/extract-kernel.pl BOOTIMG_${VERSION}/extract-kernel.pl
+  cp tools/mkboot/mkbootfs BOOTIMG_${VERSION}/mkbootfs
+  cp tools/mkboot/mkbootimg BOOTIMG_${VERSION}/mkbootimg
+  cp $BUILD_DIR/boot.img BOOTIMG_${VERSION}/boot.img
+  cd BOOTIMG_${VERSION}
+
+  echo "--> Extracting boot.img ..."
+  ./extract-kernel.pl boot.img 2>/dev/null
+  ./extract-ramdisk.pl boot.img 2>/dev/null
+  if [ ! -d boot.img-ramdisk ]; then
+    cd $KITCHEN
+    rm -fr boot.img-ramdisk
+    echo "--> ERROR:  Failed to extract ramdisk."
+  else
+    echo "--> Applying patch ..."
+    cp -f $KITCHEN/$RAMDISK_MODS boot.img-ramdisk/init.rc
+    echo "--> Building ramdisk ..."
+    ./mkbootfs boot.img-ramdisk | gzip > ramdisk.gz
+
+    echo "--> Building boot.img ..."
+    cd ..
+    BASE=`scripts/get_kernel_base_addr`
+    cd BOOTIMG_${VERSION}
+    ./mkbootimg --kernel zImage --ramdisk ramdisk.gz -o newBoot.img --base $BASE
+    cd ..
+    mv -f BOOTIMG_${VERSION}/newBoot.img $BUILD_DIR/boot.img
+  fi
+
+  rm -fr BOOTIMG_${VERSION}
+
+  clear
+  echo "-------------------------------------------------------------------------"
+  echo " Porting MIUI ${VERSION} to device Speedy"
   echo "-------------------------------------------------------------------------"
   echo
   echo "--> Updating build.prop ..."
   cd $BUILD_DIR/system
-  build=`grep -m 1 ro.build.display.id build.orig \
+  BUILD=`grep -m 1 ro.build.display.id build.orig \
         | sed 's/ro.build.display.id=MIUI.//g'`
 
-  sed -ri s/ro.modversion=/ro.modversion=MIUIUS-"$build"-EN-SPEEDY/g build.prop
-  sed -ri s/ro.build.display.id=/ro.build.display.id=MIUI."$build"/g build.prop
+  sed -ri s/ro.modversion=/ro.modversion=MIUIUS-"$BUILD"-EN-SPEEDY/g build.prop
+  sed -ri s/ro.build.display.id=/ro.build.display.id=MIUI."$BUILD"/g build.prop
 
-  inc=`grep -m 1 ro.build.version.incremental build.orig \
+  INC=`grep -m 1 ro.build.version.incremental build.orig \
        | sed 's/ro.build.version.incremental=//g'`
 
-  sed -ri s/ro.build.version.incremental=/ro.build.version.incremental="$inc"/g build.prop
+  sed -ri s/ro.build.version.incremental=/ro.build.version.incremental="$INC"/g build.prop
 
-  build_date=`grep -m 1 ro.build.date build.orig \
+  BUILD_DATE=`grep -m 1 ro.build.date build.orig \
               | sed 's/ro.build.date=//g'`
 
-  sed -ri s/ro.build.date=/ro.build.date="$build_date"/g build.prop
+  sed -ri s/ro.build.date=/ro.build.date="$BUILD_DATE"/g build.prop
 
-  utc=`grep -m 1 ro.build.date.utc build.orig \
+  UTC=`grep -m 1 ro.build.date.utc build.orig \
        | sed 's/ro.build.date.utc=//g'`
 
-  sed -ri s/ro.build.date.utc=/ro.build.date.utc="$utc"/g build.prop
+  sed -ri s/ro.build.date.utc=/ro.build.date.utc="$UTC"/g build.prop
   rm -f build.orig
   cd $KITCHEN
 
-  echo "--> ZipAligning ..."
+  echo "--> ZipAligning apks..."
   cd $BUILD_DIR
   APKS=`find . | grep .apk$ | sort -f`
   APK1=
@@ -173,7 +229,7 @@ else
         mv -f $NEW_APK $APK 
       fi
     else
-      echo "Error: Unable to zipalign, aborting"
+      echo "--> ERROR: Unable to zipalign, aborting"
       break
     fi
     APK1=
@@ -197,6 +253,6 @@ else
   java -jar tools/signapk_files/signapk.jar tools/signapk_files/testkey.x509.pem tools/signapk_files/testkey.pk8 OUTPUT_ZIP/Speedy_unsigned.zip OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_Signed_Jefftet.zip
   rm -f OUTPUT_ZIP/Speedy_unsigned.zip
 
-  echo "--> Complete."
+  echo "--> Rom port Complete."
 fi
 exit 0
