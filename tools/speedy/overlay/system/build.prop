@@ -14,7 +14,7 @@ ro.build.version.release=2.3.7
 ro.build.date=
 ro.build.date.utc=
 ro.build.type=userdebug
-ro.build.user=x99_jt
+ro.build.user=jt_x99
 ro.build.host=bsprelease
 ro.build.tags=test-keys
 ro.product.model=PG06100
@@ -68,7 +68,7 @@ ro.ril.def.agps.mode=2
 ro.opengles.version=131072
 
 # This is a high density device with more memory, so larger vm heaps for it.
-dalvik.vm.heapsize=32m
+dalvik.vm.heapsize=36m
 
 mobiledata.interfaces=rmnet0,eth0,gprs,ppp0,wimax0
 
@@ -92,6 +92,9 @@ media.a1026.nsForVoiceRec=0
 media.a1026.enableA1026=0
 htc.audio.alt.enable=0
 htc.audio.hac.enable=0
+ro.config.ringtone=Ring_Synth_04.ogg
+ro.config.notification_sound=pixiedust.ogg
+ro.config.alarm_alert=Alarm_Classic.ogg
 keyguard.no_require_sim=true
 ro.url.legal=http://www.google.com/intl/%s/mobile/android/basic/phone-legal.html
 ro.url.legal.android_privacy=http://www.google.com/intl/%s/mobile/android/basic/privacy.html
