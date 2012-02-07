@@ -1,0 +1,96 @@
+#!/system/bin/sh
+
+MMC=`ls -d /sys/block/mmc*`
+
+for n in $MMC; do
+	if [ -e $n/queue/rotational ]; then
+		echo 0 > $n/queue/rotational;
+	fi
+	if [ -e $i/queue/nr_requests ]; then
+		echo 8192 > $n/queue/nr_requests;
+	fi
+  if [ -e $n/queue/iosched/fifo_batch ]; then
+    echo 1 > $n/queue/iosched/fifo_batch;
+  fi
+	if [ -e $n/queue/iosched/writes_starved ]; then
+		echo 1 > $n/queue/iosched/writes_starved;
+	fi
+	if [ -e $n/queue/read_ahead_kb ]; then
+		echo 256 > $n/queue/read_ahead_kb;
+	fi
+done
+
+if [ -e /sys/devices/virtual/bdi/179:0/read_ahead_kb ]; then
+  echo "1024" > /sys/devices/virtual/bdi/179:0/read_ahead_kb;
+fi
+
+if [ -e /sys/devices/virtual/bdi/default/read_ahead_kb ]; then
+  echo "256" > /sys/devices/virtual/bdi/default/read_ahead_kb;
+fi
+
+# OnDemand tweaks
+if [ -e /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate ]; then
+  echo "1000" /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate;
+fi
+if [ -e /sys/devices/system/cpu/cpufreq/ondemand/up_threshold ]; then
+  echo "85" /sys/devices/system/cpu/cpufreq/ondemand/up_threshold;
+fi
+
+# Smartass tweaks
+if [ -e /sys/devices/system/cpu/cpufreq/smartass/awake_ideal_freq ]; then
+	echo "800000" > /sys/devices/system/cpu/cpufreq/smartass/awake_ideal_freq;
+	if [ "`cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq`" -eq 200000 ]; then
+     echo "200000" > /sys/devices/system/cpu/cpufreq/smartass/sleep_ideal_freq;
+	else 
+		echo "100000" > /sys/devices/system/cpu/cpufreq/smartass/sleep_ideal_freq;
+	fi
+	echo "800000" > /sys/devices/system/cpu/cpufreq/smartass/sleep_wakeup_freq;
+	echo "85" > /sys/devices/system/cpu/cpufreq/smartass/max_cpu_load;
+	echo "55" > /sys/devices/system/cpu/cpufreq/smartass/min_cpu_load;
+	echo "200000" > /sys/devices/system/cpu/cpufreq/smartass/ramp_down_step;
+	echo "0" > /sys/devices/system/cpu/cpufreq/smartass/ramp_up_step;
+fi
+
+# Kernel tweaks
+sysctl -w kernel/panic=0;
+sysctl -w kernel/panic_on_oops=1;
+sysctl -w kernel/sem=500,512000,100,2048;
+sysctl -w kernel/shmmax=268435456;
+sysctl -w kernel/msgmni=1024;
+
+# VM tweaks
+sysctl -w vm/page-cluster=3;
+sysctl -w vm/laptop_mode=0;
+sysctl -w vm/dirty_writeback_centisecs=500;
+sysctl -w vm/dirty_ratio=80;
+sysctl -w vm/vfs_cache_pressure=1;
+sysctl -w vm/panic_on_oom=0;
+sysctl -w vm/oom_kill_allocating_task=0;
+sysctl -w vm/overcommit_memory=1;
+sysctl -w vm/dirty_expire_centisecs=3000;
+sysctl -w vm/dirty_background_ratio=65;
+
+# OOM tweaks
+setprop ro.FOREGROUND_APP_ADJ 0
+setprop ro.VISIBLE_APP_ADJ 4
+setprop ro.PERCEPTIBLE_APP_ADJ 2
+setprop ro.HEAVY_WEIGHT_APP_ADJ 5
+setprop ro.SECONDARY_SERVER_ADJ 6
+setprop ro.BACKUP_APP_ADJ 7
+setprop ro.HOME_APP_ADJ 1
+setprop ro.HIDDEN_APP_MIN_ADJ 8
+setprop ro.EMPTY_APP_ADJ 15
+
+setprop ro.FOREGROUND_APP_MEM 1536
+setprop ro.VISIBLE_APP_MEM 3072
+setprop ro.PERCEPTIBLE_APP_MEM 1024
+setprop ro.HEAVY_WEIGHT_APP_MEM 14080
+setprop ro.SECONDARY_SERVER_MEM 14080
+setprop ro.BACKUP_APP_MEM 17920
+setprop ro.HOME_APP_MEM 1024
+setprop ro.HIDDEN_APP_MEM 17920
+setprop ro.CONTENT_PROVIDER_MEM 15360
+setprop ro.EMPTY_APP_MEM 25600
+
+echo 0,4,6,8,14,15 /sys/module/lowmemorykiller/parameters/adj;
+echo 1536,3072,14080,17920,21760,25600 /sys/module/lowmemorykiller/parameters/minfree;

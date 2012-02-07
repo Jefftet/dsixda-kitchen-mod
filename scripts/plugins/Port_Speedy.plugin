@@ -1,47 +1,51 @@
-
 echo "-------------------------------------------------------------------------"
-echo " Porting MIUI ${VERSION}"
+echo " Port MIUI?"
 echo "-------------------------------------------------------------------------"
-echo
 echo -n "--> Proceed with Port (y/n)? (default: y): "
 read PROCEED
 
-if [ "$PROCEED" == "n" ]
-then
+if [ "$PROCEED" == "n" ]; then
   exit 0
 else
 
   KITCHEN=~/dev/kitchen
-  OVERLAY=tools/speedy/overlay/*
-  MMS_MODS=tools/speedy/mms/*
-  FRAME_MODS=tools/speedy/framework/*
-  SPEEDY_DIR=tools/speedy
-  APP2SD_DIR=tools/speedy/app2sd/*
+
+  OVERLAY=tools/speedy_files/overlay/*
+  MMS_MODS=tools/speedy_files/mms/*
+  FRAME_MODS=tools/speedy_files/framework/*
+  A2EXT_MODS=tools/speedy_files/app2ext/*
 
   echo -n "--> Enter MIUI build version: "
   read VERSION
 
-  BUILD_DIR=WORKING_${VERSION}
-  WORKING=~/dev/kitchen/${BUILD_DIR}
+  STANDARD=STANDARD_$VERSION
+  APP2EXT=APP2EXT_$VERSION
 
-  if [ -e $BUILD_DIR ]
-  then
-    echo -n "--> $BUILD_DIR exists, Remove it (y/n)? (default: y): "
+  if [ -e $KITCHEN/STANDARD_* ]; then
+    echo -n "--> An STANDARD build directory exists, Remove it (y/n)? (default: y): "
     read REMOVE
-
-    if [ "$REMOVE" == "n" ]
-    then
+    if [ "$REMOVE" == "n" ]; then
       exit 0
     fi
-    rm -rf $BUILD_DIR
+    rm -rf $KITCHEN/STANDARD_*
+  fi
+
+  if [ -e $KITCHEN/APP2EXT_* ]; then
+    echo -n "--> An APP2EXT build directory exists, Remove it (y/n)? (default: y): "
+    read REMOVE
+    if [ "$REMOVE" == "n" ]; then
+      exit 0
+    fi
+    rm -rf $KITCHEN/APP2EXT_*
   fi
 
   clear
   echo "-------------------------------------------------------------------------"
   echo " Porting MIUI ${VERSION}"
   echo "-------------------------------------------------------------------------"
-  echo "--> Creating working folder  ..."
-  mkdir $BUILD_DIR
+  echo "--> Creating working folders  ..."
+  mkdir -p $STANDARD
+  mkdir -p $APP2EXT
 
   echo "--> Locating base rom ..."
   if [ -e original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip ]
@@ -53,48 +57,48 @@ else
   fi
 
   echo "--> Extracting rom ..."
-  unzip -q original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip -d $BUILD_DIR -x bootloader.img recovery.img recovery_signed.img userdata.img radio.img rcdata.img splash1.nb0 splash2.nb0 android-info.txt 2>/dev/null
+  unzip -q original_update/MIUI.us_vision_${VERSION}_Eng_Deo_ZipA_Signed.zip -d $STANDARD -x bootloader.img recovery.img recovery_signed.img userdata.img radio.img rcdata.img splash1.nb0 splash2.nb0 android-info.txt 2>/dev/null
 
   echo "--> Prepairing rom ..."
-  rm -fr $BUILD_DIR/META-INF
-  rm -f $BUILD_DIR/boot.img
-  rm -f $BUILD_DIR/system/etc/A1026_CFG.csv
-  rm -f $BUILD_DIR/system/etc/AdieHWCodec_WA.csv
-  rm -f $BUILD_DIR/system/etc/T-Mobile*
-  rm -f $BUILD_DIR/system/etc/firmware/Vision*
-  rm -f $BUILD_DIR/system/etc/firmware/default_org_WA.acdb
-  rm -f $BUILD_DIR/system/etc/permissions/android.hardware.telephony.gsm.xml
-  rm -f $BUILD_DIR/system/lib/hw/*.vision.so
-  rm -f $BUILD_DIR/system/lib/modules/*
-  rm -f $BUILD_DIR/system/usr/keychars/vision*
-  rm -f $BUILD_DIR/system/usr/keylayout/vision*
-  cp $BUILD_DIR/system/build.prop $BUILD_DIR/system/build.orig
-  rm -f $BUILD_DIR/system/build.prop
+  rm -fr $STANDARD/META-INF
+  rm -f $STANDARD/boot.img
+  rm -f $STANDARD/system/etc/A1026_CFG.csv
+  rm -f $STANDARD/system/etc/AdieHWCodec_WA.csv
+  rm -f $STANDARD/system/etc/T-Mobile*
+  rm -f $STANDARD/system/etc/firmware/Vision*
+  rm -f $STANDARD/system/etc/firmware/default_org_WA.acdb
+  rm -f $STANDARD/system/etc/permissions/android.hardware.telephony.gsm.xml
+  rm -f $STANDARD/system/lib/hw/*.vision.so
+  rm -f $STANDARD/system/lib/modules/*
+  rm -f $STANDARD/system/usr/keychars/vision*
+  rm -f $STANDARD/system/usr/keylayout/vision*
+  rm -f $STANDARD/system/media/audio/notifications/*
+  rm -f $STANDARD/system/media/audio/ringtones/*
+  cp $STANDARD/system/build.prop $STANDARD/system/build.orig
+  rm -f $STANDARD/system/build.prop
 
   echo "--> Copying Device files ..."
-  cp -rf $OVERLAY $BUILD_DIR
+  cp -rf $OVERLAY $STANDARD
 
   clear
   echo "-------------------------------------------------------------------------"
   echo " Porting MIUI ${VERSION}"
   echo "-------------------------------------------------------------------------"
   echo "--> Installing Framework-res ..."
-  apktool if $BUILD_DIR/system/framework/framework-res.apk
+  apktool if $STANDARD/system/framework/framework-res.apk
 
   clear
   echo "-------------------------------------------------------------------------"
   echo " Porting MIUI ${VERSION}"
   echo "-------------------------------------------------------------------------"
   echo "--> Modifying Mms.apk ..."
-  echo "--> Decompiling Mms.apk..."
-  apktool d -f $BUILD_DIR/system/app/Mms.apk apk/Mms
+  apktool d -f $STANDARD/system/app/Mms.apk apk/Mms
   echo "--> Applying patch ..."
   cp -rf $MMS_MODS apk/Mms
-  sleep 1
-  echo "--> Building Mms.apk ..."
+  echo "--> Rebuilding Mms.apk ..."
   apktool b apk/Mms
   cd apk/Mms/build/apk
-  zip -q -u $WORKING/system/app/Mms.apk res/xml/mms_config.xml
+  zip -q -u $KITCHEN/$STANDARD/system/app/Mms.apk res/xml/mms_config.xml
   cd $KITCHEN
   rm -rf apk/Mms
 
@@ -102,8 +106,23 @@ else
   echo "-------------------------------------------------------------------------"
   echo " Porting MIUI ${VERSION}"
   echo "-------------------------------------------------------------------------"
+  echo "--> Modifying framework.jar ..."
+  apktool d -f $STANDARD/system/framework/framework.jar apk/framework
+  echo "--> Applying patch ..."
+  cp -rf $FRAME_MODS apk/framework
+  echo "--> Rebuilding framework.jar ..."
+  apktool b apk/framework
+  cd apk/framework/build/apk
+  zip -q -j -u $KITCHEN/$STANDARD/system/framework/framework.jar classes.dex
+  cd $KITCHEN
+  rm -rf apk/framework
+
+  clear
+  echo "-------------------------------------------------------------------------"
+  echo " Porting MIUI ${VERSION}"
+  echo "-------------------------------------------------------------------------"
   echo "--> Updating build.prop ..."
-  cd $BUILD_DIR/system
+  cd $STANDARD/system
   BUILD=`grep -m 1 ro.build.display.id build.orig \
         | sed 's/ro.build.display.id=MIUI.//g'`
 
@@ -128,9 +147,9 @@ else
   cd $KITCHEN
 
   echo "--> ZipAligning apks..."
-  cd $BUILD_DIR
+  cd $STANDARD
   APKS=`find . | grep .apk$ | sort -f`
-  APK1=
+  APK1=""
 
   for APK in $APKS
   do
@@ -180,44 +199,41 @@ else
   echo "-------------------------------------------------------------------------"
   echo " Porting MIUI ${VERSION}"
   echo "-------------------------------------------------------------------------"
-  echo "--> Building Rom ..."
-  cd $BUILD_DIR  
-  if [ -e $KITCHEN/OUTPUT_ZIP/Speedy_unsigned.zip ]
-  then
-    rm -f $KITCHEN/OUTPUT_ZIP/Speedy_unsigned.zip
+  echo "--> Building Standard Rom ..."  
+  if [ -e OUTPUT_ZIP/Speedy_unsigned.zip ]; then
+    rm -f OUTPUT_ZIP/Speedy_unsigned.zip
   fi
+  cd $STANDARD
   zip -q -r -y $KITCHEN/OUTPUT_ZIP/Speedy_unsigned.zip *
+  cd ..
 
-  echo "--> Building Rom w/App2sd..."
-  if [ -e $KITCHEN/OUTPUT_ZIP/Speedy_App2sd_unsigned.zip ]
-  then
-    rm -f $KITCHEN/OUTPUT_ZIP/Speedy_App2sd_unsigned.zip
-  fi
-  cd $KITCHEN
-  cd $BUILD_DIR/system
-  sed -ri s/ro.modversion=MIUIUS-"$BUILD"-EN-SPEEDY/ro.modversion=/g build.prop
-  cd $KITCHEN
-  cp -rf $APP2SD_DIR $BUILD_DIR
-  cd $KITCHEN
-  cd $BUILD_DIR
-  zip -q -r -y $KITCHEN/OUTPUT_ZIP/Speedy_App2sd_unsigned.zip *
-  cd $KITCHEN
-
-  echo "--> Signing Rom ..."
-  if [ -e OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_Signed_Jefftet.zip ]
-  then
+  echo "--> Signing Standard Rom ..."
+  if [ -e OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_Signed_Jefftet.zip ]; then
     rm -f OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_Signed_Jefftet.zip
   fi
   java -jar tools/signapk_files/signapk.jar tools/signapk_files/testkey.x509.pem tools/signapk_files/testkey.pk8 OUTPUT_ZIP/Speedy_unsigned.zip OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_Signed_Jefftet.zip
   rm -f OUTPUT_ZIP/Speedy_unsigned.zip
 
-  echo "--> Signing Rom w/App2sd..."
-  if [ -e OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_App2sd_Signed_Jefftet.zip ]
-  then
-    rm -f OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_App2sd_Signed_Jefftet.zip
+  echo "--> Building Rom w/App2ext ..."
+  if [ -e $KITCHEN/OUTPUT_ZIP/Speedy_App2ext_unsigned.zip ]; then
+    rm -f $KITCHEN/OUTPUT_ZIP/Speedy_App2ext_unsigned.zip
   fi
-  java -jar tools/signapk_files/signapk.jar tools/signapk_files/testkey.x509.pem tools/signapk_files/testkey.pk8 OUTPUT_ZIP/Speedy_App2sd_unsigned.zip OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_App2sd_Signed_Jefftet.zip
-  rm -f OUTPUT_ZIP/Speedy_App2sd_unsigned.zip
+  cp -rf $STANDARD/* $APP2EXT
+  cd $APP2EXT/system
+  sed -ri s/ro.modversion=MIUIUS-"$BUILD"-EN-SPEEDY/ro.modversion=/g build.prop
+
+  cd $KITCHEN
+  cp -rf $A2EXT_MODS $APP2EXT
+  cd $APP2EXT
+  zip -q -r -y $KITCHEN/OUTPUT_ZIP/Speedy_App2ext_unsigned.zip *
+  cd $KITCHEN
+
+  echo "--> Signing App2ext Rom ..."
+  if [ -e OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_App2ext_Signed_Jefftet.zip ]; then
+    rm -f OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_App2ext_Signed_Jefftet.zip
+  fi
+  java -jar tools/signapk_files/signapk.jar tools/signapk_files/testkey.x509.pem tools/signapk_files/testkey.pk8 OUTPUT_ZIP/Speedy_App2ext_unsigned.zip OUTPUT_ZIP/MIUI.us_Speedy_${VERSION}_Eng_Deo_ZipA_App2ext_Signed_Jefftet.zip
+  rm -f OUTPUT_ZIP/Speedy_App2ext_unsigned.zip
 
   echo "--> Rom port Complete."
 fi

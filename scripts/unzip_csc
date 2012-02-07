@@ -52,8 +52,11 @@ else
     then
       echo
       echo "These are the apps found in sec_csc.zip:"
-
-      echo $apk_files
+      echo 
+      for apk in $apk_files
+      do
+        echo $apk
+      done
 
       echo
       echo -n "Copy the apps to your working folder (y/n)? (default: n): "
@@ -63,10 +66,7 @@ else
 
       if [ "$do_copy" != "y" ]
       then
-        for apk in $apk_files
-        do
-          rm -vf $apk
-        done
+        rm -vf $apk_files
       fi
     fi
 

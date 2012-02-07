@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mms_config version="4">
+    <int name="maxMessageSize">1024000</int>
+    <string name="uaProfUrl">http://device.sprintpcs.com/Samsung/SPH-D720/latest</string>
+    <int name="smsToMmsTextThreshold">2</int>
+    <bool name="enableMultipartSMS">false</bool>
+    <bool name="enableSlideDuration">false</bool>
+    <int name="maxMessageTextSize">160</int>
+    <string name="userAgent">SPH-D720/Android-mms</string>
+</mms_config>

@@ -1,0 +1,34 @@
+#!/system/bin/sh
+# Make sure the Apps2SD structure exists, then activate native a2sd
+
+if [ "$SD_EXT_DIRECTORY" = "" ];
+then
+    SD_EXT_DIRECTORY=/sd-ext;
+fi;
+
+if ! awk -vDIR="$SD_EXT_DIRECTORY" '$2 == DIR { exit 1; }' /proc/mounts ;
+then
+    # create directories if necessary.
+    for i in app app-private dalvik-cache;
+    do
+        if [ ! -d $SD_EXT_DIRECTORY/$i ];
+        then
+
+            # create directories.
+            mkdir $SD_EXT_DIRECTORY/$i
+            busybox chown 1000:1000 $SD_EXT_DIRECTORY/$i
+            busybox chmod 771 $SD_EXT_DIRECTORY/$i
+            log -p i -t a2sd "$SD_EXT_DIRECTORY/$i created"
+        fi;
+    done
+
+    # mount and sync app app-private dalvik-cache to sd-ext
+    mount -o sync /sd-ext/app /data/app
+    log -p i -t a2sd "$SD_EXT_DIRECTORY/app activated"
+    mount -o sync /sd-ext/app-private /data/app-private
+    log -p i -t a2sd "$SD_EXT_DIRECTORY/app-private activated"
+    mount -o sync /sd-ext/dalvik-cache /data/dalvik-cache
+    log -p i -t a2sd "$SD_EXT_DIRECTORY/dalvik-cache activated"
+    setprop cm.a2sd.active 1
+    log -p i -t a2sd "Apps2SD successfully activated"
+fi;
